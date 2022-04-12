@@ -10,6 +10,7 @@ site
 coverage.xml
 env3.*
 env
+.env
 docs_build
 venv
 alembic.ini
