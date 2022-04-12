@@ -1,0 +1,15 @@
+.idea
+.ipynb_checkpoints
+.vscode
+__pycache__
+.pytest_cache
+htmlcov
+dist
+site
+.coverage
+coverage.xml
+env3.*
+env
+docs_build
+venv
+alembic.ini
