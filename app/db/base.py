@@ -2,3 +2,4 @@
 # imported by Alembic
 
 from app.db.base_class import Base
+from app.models.grade import Grade  # noqa
