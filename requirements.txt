@@ -17,6 +17,7 @@ Jinja2==3.1.1
 Mako==1.2.0
 MarkupSafe==2.1.1
 orjson==3.6.7
+psycopg2==2.9.3
 pydantic==1.9.0
 python-dotenv==0.20.0
 python-multipart==0.0.5
