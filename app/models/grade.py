@@ -12,3 +12,4 @@ class Grade(Base):
     name = Column(String, unique=True, index=True, nullable=False)
 
     subjects = relationship('GradeSubject', back_populates='grade')
+    students = relationship('Registration', back_populates='grade')
