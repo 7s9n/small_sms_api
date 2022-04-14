@@ -6,7 +6,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import BigInteger
-from ..db.base_class import Base
+from app.db.base_class import Base
 
 
 class Student(Base):

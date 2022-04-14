@@ -5,7 +5,7 @@ from sqlalchemy import (
     Boolean,
 )
 from sqlalchemy.types import BigInteger
-from ..db.base_class import Base
+from app.db.base_class import Base
 
 
 class SchoolYear(Base):

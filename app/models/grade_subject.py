@@ -3,7 +3,7 @@ from sqlalchemy import (
     ForeignKey,
 )
 from sqlalchemy.orm import relationship
-from ..db.base_class import Base
+from app.db.base_class import Base
 
 class GradeSubject(Base):
     grade_id = Column(ForeignKey('grades.id'), primary_key=True)
