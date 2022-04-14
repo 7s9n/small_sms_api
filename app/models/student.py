@@ -4,6 +4,7 @@ from sqlalchemy import (
     Date,
     Boolean,
 )
+from sqlalchemy.orm import relationship
 from sqlalchemy.types import BigInteger
 from ..db.base_class import Base
 
@@ -17,3 +18,5 @@ class Student(Base):
     gender = Column(Boolean, default=True, nullable=False)
     date_of_birth = Column(Date, nullable=False)
     guardian_phone_no = Column(String, nullable=False)
+
+    registrations = relationship('Registration', back_populates='student')
