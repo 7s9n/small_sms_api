@@ -7,3 +7,4 @@ from models.subject import Subject  # noqa
 from models.school_year import SchoolYear  # noqa
 from models.student import Student  # noqa
 from models.grade_subject import GradeSubject  # noqa
+from models.registration import Registration  # noqa
