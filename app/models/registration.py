@@ -5,7 +5,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import BigInteger
-from app.db.base_class import Base
+from ..db.base_class import Base
 
 
 class Registration(Base):
