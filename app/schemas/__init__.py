@@ -3,3 +3,8 @@ from .grade import (
     GradeInDB,
     GradeUpdate,
 )
+from .subject import (
+    SubjectCreate,
+    SubjectUpdate,
+    SubjectInDB,
+)
