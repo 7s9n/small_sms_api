@@ -13,4 +13,3 @@ env
 .env
 docs_build
 venv
-alembic.ini
