@@ -18,7 +18,7 @@ These instructions will get you a copy of the project up and running on your loc
 It's best to install Python projects in a Virtual Environment. Once you have set up a VE, clone this project
 
 ```
-git clone https://github.com/Ho011/small_school_management_system_api.git
+git clone https://github.com/Ho011/small_sms_api.git
 ```
 
 ```
