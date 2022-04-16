@@ -22,7 +22,7 @@ git clone https://github.com/Ho011/small_sms_api.git
 ```
 
 ```
-cd small_school_management_system_api
+cd small_sms_api
 ```
 
 ```
