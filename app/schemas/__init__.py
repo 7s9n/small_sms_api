@@ -8,3 +8,9 @@ from .subject import (
     SubjectUpdate,
     SubjectInDB,
 )
+from .grade_subject import (
+    GradeSubjectOut,
+    GradeSubjectsOut,
+    GradeSubjectCreate,
+    GradeSubjectUpdate,
+)
