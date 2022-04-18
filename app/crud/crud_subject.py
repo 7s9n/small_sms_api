@@ -7,9 +7,9 @@ from app.schemas import (
     SubjectUpdate,
 )
 
-class CRUDGrade(CRUDBase[Subject, SubjectCreate, SubjectUpdate]):
+class CRUDSubject(CRUDBase[Subject, SubjectCreate, SubjectUpdate]):
     def get_by_name(self, db: Session, *, name: str) -> Optional[Subject]:
         return db.query(self.model).filter(self.model.name == name).first()
 
 
-subject = CRUDGrade(Subject)
+subject = CRUDSubject(Subject)
