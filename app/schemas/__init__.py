@@ -14,3 +14,8 @@ from .grade_subject import (
     GradeSubjectCreate,
     GradeSubjectUpdate,
 )
+from .school_year import (
+    SchoolYearInDB,
+    SchoolYearCreate,
+    SchoolYearUpdate
+)
