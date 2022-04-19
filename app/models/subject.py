@@ -11,4 +11,4 @@ class Subject(Base):
     id = Column(SmallInteger, primary_key=True, index=True, nullable=False)
     name = Column(String, unique=True, index=True, nullable=False)
 
-    grades = relationship('GradeSubject', back_populates='subject')
+    grades = relationship('GradeSubject', back_populates='subject', cascade="all, delete-orphan")
