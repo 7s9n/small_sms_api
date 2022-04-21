@@ -93,6 +93,27 @@ def update_school_year(
     return school_year
 
 
+@router.put('/{school_year_id}/activate', response_model=schemas.SchoolYearInDB)
+def activate_school_year(
+    *,
+    db: Session = Depends(get_db),
+    school_year_id: int
+):
+    """
+    Set current school year
+    """
+    school_year = crud.school_year.get(db, school_year_id)
+
+    if not school_year:
+        raise HTTPException(
+            status_code=404, detail=f"School year with id {school_year_id} does not exist",
+        )
+
+    school_year = crud.school_year.acivate_school_year(db, school_year_id)
+
+    return school_year
+
+
 @router.delete('/{school_year_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_school_year(
     *,
@@ -107,6 +128,11 @@ def delete_school_year(
     if not school_year:
         raise HTTPException(
             status_code=404, detail=f"School year with id {school_year_id} does not exist",
+        )
+    if school_year.students:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"لايمكن حذف هذا العالم الدراسي {school_year.title} لانه توجد بيانات طلاب مرتبطة به, يجب حذف بيانات الطلاب اولاُ ثم حاول مرة اخرى.",
         )
 
     school_year = crud.school_year.remove(db, id=school_year_id)
