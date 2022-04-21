@@ -15,11 +15,7 @@ from app import (
     crud,
     schemas,
 )
-from app.db.base import(
-    GradeSubject,
-    Subject,
-    Grade
-)
+
 router = APIRouter(prefix='/grades', tags=['Grades'])
 
 
@@ -110,7 +106,18 @@ def delete_grade(
 
     if not grade:
         raise HTTPException(
-            status_code=404, detail=f"Grade with id {grade_id} does not exist",
+            status_code=404,
+            detail=f"لايوجد صف بـ هذا الرقم {grade_id}.",
+        )
+    if grade.subjects:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"لايمكن حذف {grade.name} لانه يوجد مواد مرتبطة بالصف, يجب إلغاء تعيين جميع المواد المرتبطة بالصف ثم حاول مرة اخرى",
+        )
+    if grade.students:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"لايمكن حذف {grade.name} ,لانه توجد بيانات طلاب مرتبطة بـ هذا الصف, يجب اولاً حذف بيانات الطلاب المرتبطة بـ هذا الصف ثم حاول مرة اخرى.",
         )
 
     grade = crud.grade.remove(db, id=grade_id)
