@@ -18,5 +18,5 @@ class Registration(Base):
 
     student = relationship('Student', back_populates='registrations')
     grade = relationship("Grade", back_populates='students')
-    school_year = relationship("SchoolYear")
+    school_year = relationship("SchoolYear", back_populates='students')
     old_registration = relationship("Registration", remote_side=[id])
