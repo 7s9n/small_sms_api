@@ -23,9 +23,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self.model = model
 
     def get_multi(
-        self, db: Session, *, skip: int = 0, limit: int = 20
+        self, db: Session, *, skip: int = 0, limit: int = 20, params: Dict[str, Any] = None
     ) -> List[ModelType]:
-        return db.query(self.model).offset(skip).limit(limit).all()
+        query = db.query(self.model)
+        if params:
+            for attr in [x for x in params if params[x] is not None]:
+                query = query.filter(getattr(self.model, attr) == params[attr])
+        return query.offset(skip).limit(limit).all()
 
     def get(self, db: Session, id: int) -> Optional[ModelType]:
         return db.query(self.model).filter(self.model.id == id).first()
