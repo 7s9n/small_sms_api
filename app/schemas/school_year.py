@@ -10,7 +10,6 @@ class Base(BaseModel):
     title: str
     start_date: date
     end_date: date
-    is_active: bool
 
     @validator("title")
     def validate_title(cls, value):
@@ -53,6 +52,7 @@ class SchoolYearUpdate(Base):
 
 class SchoolYearInDB(Base):
     id: int
+    is_active: bool
 
     class Config:
         orm_mode = True
