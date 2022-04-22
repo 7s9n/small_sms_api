@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 class GradeBase(BaseModel):
     name: str
+    numeric_value: int
 
 
 class GradeCreate(GradeBase):
