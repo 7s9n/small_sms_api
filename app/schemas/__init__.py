@@ -17,5 +17,16 @@ from .grade_subject import (
 from .school_year import (
     SchoolYearInDB,
     SchoolYearCreate,
-    SchoolYearUpdate
+    SchoolYearUpdate,
+)
+from .student import (
+    StudentCreate,
+    StudentUpdate,
+    StudentInDB,
+)
+from .registration import (
+    RegistrationCreate,
+    RegistrationUpdate,
+    RegistrationOut,
+    RegistrationIn,
 )
