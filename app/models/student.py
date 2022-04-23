@@ -1,5 +1,6 @@
 from sqlalchemy import (
     Column,
+    ForeignKey,
     String,
     Date,
     Boolean,
@@ -18,5 +19,7 @@ class Student(Base):
     gender = Column(Boolean, default=True, nullable=False)
     date_of_birth = Column(Date, nullable=False)
     guardian_phone_no = Column(String, nullable=False)
+    nationality_id = Column(ForeignKey('nationalities.id'), nullable=False)
 
     registrations = relationship('Registration', back_populates='student')
+    nationality = relationship('Nationality', back_populates='students')
