@@ -30,3 +30,8 @@ from .registration import (
     RegistrationOut,
     RegistrationIn,
 )
+from .nationality import (
+    NationalityCreate,
+    NationalityUpdate,
+    NationalityInDB,
+)
