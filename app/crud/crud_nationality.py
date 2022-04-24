@@ -11,10 +11,10 @@ from app.schemas import (
 
 
 class CRUDNationality(CRUDBase[Nationality, NationalityCreate, NationalityUpdate]):
-    def get_by_name(self, db: Session, name: str) -> Optional[Nationality]:
+    def get_by_name(self, db: Session, masculine_name: str, feminine_name: str) -> Optional[Nationality]:
         return db.query(self.model).filter(
-            or_(self.model.masculine_form == name,
-                self.model.feminine_form == name)
+            or_(self.model.masculine_form == masculine_name,
+                self.model.feminine_form == feminine_name)
         ).first()
 
 
