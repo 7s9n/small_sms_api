@@ -47,7 +47,11 @@ def create_student(
     db: Session = Depends(get_db),
     student_in: schemas.StudentCreate
 ):
-
+    if not crud.nationality.get(db, student_in.nationality_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nationality with id {student_in.nationality_id} not found."
+        )
     student = crud.student.create(db, obj_in=student_in)
     return student
 
@@ -65,6 +69,11 @@ def update_student(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Student with id {student_id} does not exist."
+        )
+    if not crud.nationality.get(db, student_in.nationality_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Nationality with id {student_in.nationality_id} not found."
         )
     student = crud.student.update(db, db_obj=student, obj_in=student_in)
 
@@ -90,7 +99,7 @@ def delete_student(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Cannot delete this student because, it has data depends on it."
         )
-    # check if student has not marks then delete it
+    # check if student has no marks then delete it
 
     crud.student.remove(db, id=student_id)
 
