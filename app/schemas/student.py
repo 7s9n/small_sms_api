@@ -5,6 +5,7 @@ from pydantic import (
     BaseModel,
     validator
 )
+from app.schemas.nationality import NationalityInDB
 
 
 class Base(BaseModel):
@@ -65,15 +66,16 @@ class Base(BaseModel):
 
 
 class StudentCreate(Base):
-    pass
+    nationality_id: int
 
 
-class StudentUpdate(Base):
+class StudentUpdate(StudentCreate):
     pass
 
 
 class StudentInDB(Base):
     id: int
+    nationality: NationalityInDB
 
     class Config:
         orm_mode = True
