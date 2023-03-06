@@ -21,6 +21,9 @@ class CRUDRegistration(CRUDBase[Registration, RegistrationCreate, RegistrationUp
     def get_by_registration_no(self, db: Session, regi_no: str) -> Optional[Registration]:
         return db.query(self.model).filter(self.model.regi_no == regi_no).first()
 
+    def get(self, db: Session, payload)-> Registration | None:
+        return db.query(self.model).get(payload)
+        
     def get_registration_by_grade_student_school_year(
         self,
         db: Session,

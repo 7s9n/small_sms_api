@@ -1,4 +1,8 @@
-from typing import List
+from typing import (
+    List,
+    Union,
+    Optional,
+)
 
 from fastapi import (
     APIRouter,
@@ -8,36 +12,123 @@ from fastapi import (
     status,
 )
 
-from sqlalchemy.orm import Session
-
-from app.api.deps import get_db
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy import func
+from app.api.deps import (
+    get_db,
+    CommonQueryParams,
+)
+from app.api import deps
 from app import (
     crud,
     schemas,
+    models,
 )
-
+from app.resources.strings import (
+    TEACHER_DOES_NOT_EXIST,
+    LEVEL_DOES_NOT_EXIST,
+    GRADE_DOES_NOT_EXIST,
+)
 router = APIRouter(prefix='/grades', tags=['Grades'])
 
 
-@router.get('', response_model=List[schemas.GradeInDB])
-def get_grades(
+
+@router.get('', response_model=Union[schemas.GradesResponseModel , List[schemas.GradeInDB]])
+async def get_grades(
     *,
     db: Session = Depends(get_db),
-    skip: int = 0,
-    limit: int = 20
+    queryParam: CommonQueryParams = Depends(),
+    user: models.User = Depends(deps.get_current_active_user)
 ):
     """
     Retrieve all grades.
     """
-    grades = crud.grade.get_multi(db, skip=skip, limit=limit)
-    return grades
+    if queryParam.page is None or queryParam.limit is None:
+        return crud.grade.get_multi(db=db)
 
+    num_of_rows, grades = crud.grade.get_multi_paginated(
+        db, page=queryParam.page, limit=queryParam.limit,
+        filters={"name": queryParam.search}
+    )
+    if not grades:
+        return []
+    return schemas.GradesResponseModel(
+        data=grades,
+        pagination= {
+            "current_page": queryParam.page,
+            "per_page": queryParam.limit,
+            "total_records": num_of_rows,
+        }
+    )
+
+@router.get('/teacher', response_model=List[schemas.BasicGradeInfo],\
+    response_model_exclude={"level", "name"}
+)
+def get_teacher_assigned_grades(
+    *,
+    db: Session = Depends(deps.get_db),
+    teacher_id: Optional[int] = None,
+    current_user: models.User = Depends(deps.get_current_active_teacher_or_admin),
+    current_school_year: models.SchoolYear = Depends(deps.get_current_active_school_year)
+):
+    """
+    Retrieve all teacher assigned grades for the current year
+    """
+    teacher = None
+    if current_user.role == 't':
+        teacher_id = current_user.id
+        teacher = current_user
+
+    elif teacher_id is None and current_user.role == 'a':
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="يجب إدخال المعرف الخاص بالمدرس لعرض الصفوف الخاصة به."
+        )
+    if not teacher:
+        teacher = crud.user.get(db, teacher_id)
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=TEACHER_DOES_NOT_EXIST,
+            )
+    
+    a1 = aliased(models.AssignedTeacher)
+    grades = db.query(
+        models.Grade.id.label("id"),
+        func.concat(models.Grade.name, " ",
+                    models.Level.name).label("composite_name"),
+    ).select_from(a1).\
+        join(
+            models.Grade,
+            models.Grade.id == a1.grade_id,
+        ).join(
+            models.Level,
+            models.Level.id == models.Grade.level_id,
+        ).filter(
+            a1.teacher_id==teacher_id,
+            a1.school_year_id == current_school_year.id
+        ).all()
+
+    # subquery = db.query(
+    #     models.AssignedTeacher.grade_id
+    # ).filter(
+    #     models.AssignedTeacher.teacher_id==teacher_id,
+    #     models.AssignedTeacher.school_year_id == current_school_year.id
+    # ).subquery()
+
+    # grades = db.query(
+    #     models.Grade
+    # ).filter(models.Grade.id.in_(subquery)).all()
+
+        
+    return grades
 
 @router.get('/{grade_id}', response_model=schemas.GradeInDB)
 def get_grade(
     *,
     db: Session = Depends(get_db),
     grade_id: int,
+    user: models.User = Depends(deps.get_current_active_user),
 ):
     """
     Retrieve one grade based on id key.
@@ -46,7 +137,7 @@ def get_grade(
 
     if not grade:
         raise HTTPException(
-            status_code=404, detail=f"Grade with id {grade_id} does not exist",
+            status_code=404, detail=GRADE_DOES_NOT_EXIST,
         )
 
     return grade
@@ -55,17 +146,23 @@ def get_grade(
 @router.post('', response_model=schemas.GradeInDB, status_code=status.HTTP_201_CREATED)
 def create_grade(
     *,
-    db: Session = Depends(get_db),
-    grade_in: schemas.GradeCreate
+    db: Session = Depends(deps.get_db),
+    grade_in: schemas.GradeCreate,
+    user: models.User = Depends(deps.get_current_active_superuser),
 ):
     """
     Create a grade.
     """
-    grade = crud.grade.get_by_name(db, name=grade_in.name)
+    if not crud.level.get(db, grade_in.level_id):
+        raise HTTPException(
+            status_code=404, detail=LEVEL_DOES_NOT_EXIST,
+        )
+
+    grade = crud.grade.get_by_name_and_level(db, name=grade_in.name, level_id=grade_in.level_id)
 
     if grade:
         raise HTTPException(
-            status_code=409, detail="A grade with this name already exists",
+            status_code=409, detail="يوجد صف بنفس الاسم في نفس المرحلة الدراسية.",
         )
 
     grade = crud.grade.create(db, obj_in=grade_in)
@@ -77,16 +174,26 @@ def update_grade(
     *,
     db: Session = Depends(get_db),
     grade_id: int,
-    grade_in: schemas.GradeUpdate
+    grade_in: schemas.GradeUpdate,
+    user: models.User = Depends(deps.get_current_active_superuser),
 ):
     """
     Update a grade.
     """
+    if not crud.level.get(db, grade_in.level_id):
+        raise HTTPException(
+            status_code=404, detail=LEVEL_DOES_NOT_EXIST,
+        )
+    grade = crud.grade.get_by_name_and_level(db, name=grade_in.name, level_id=grade_in.level_id)
+    if grade and grade.id != grade_id:
+        raise HTTPException(
+            status_code=409, detail="يوجد صف بنفس هذا الاسم مسبقاً.",
+        ) 
     grade = crud.grade.get(db, id=grade_id)
 
     if not grade:
         raise HTTPException(
-            status_code=404, detail=f"Grade with id {grade_id} does not exist",
+            status_code=404, detail=GRADE_DOES_NOT_EXIST,
         )
 
     grade = crud.grade.update(db, db_obj=grade, obj_in=grade_in)
@@ -98,6 +205,7 @@ def delete_grade(
     *,
     db: Session = Depends(get_db),
     grade_id: int,
+    user: models.User = Depends(deps.get_current_active_superuser),
 ):
     """
     Delete a grade.
@@ -107,7 +215,7 @@ def delete_grade(
     if not grade:
         raise HTTPException(
             status_code=404,
-            detail=f"لايوجد صف بـ هذا الرقم {grade_id}.",
+            detail=GRADE_DOES_NOT_EXIST,
         )
     if grade.subjects:
         raise HTTPException(
@@ -120,105 +228,5 @@ def delete_grade(
             detail=f"لايمكن حذف {grade.name} ,لانه توجد بيانات طلاب مرتبطة بـ هذا الصف, يجب اولاً حذف بيانات الطلاب المرتبطة بـ هذا الصف ثم حاول مرة اخرى.",
         )
 
-    grade = crud.grade.remove(db, id=grade_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.post('/subjects', response_model=schemas.GradeSubjectOut)
-def assign_subject_to_grade(
-    *,
-    db: Session = Depends(get_db),
-    grade_subject_in: schemas.GradeSubjectCreate
-):
-    grade = crud.grade.get(db, grade_subject_in.grade_id)
-    subject = crud.subject.get(db, grade_subject_in.subject_id)
-    grade_subject = crud.grade_subject.get(
-        db, grade_subject_in.grade_id, grade_subject_in.subject_id
-    )
-
-    if not grade:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Grade with id {grade_subject_in.grade_id} does not exist",
-        )
-
-    if not subject:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f'Subject with id {grade_subject_in.subject_id} does not exist'
-        )
-    if grade_subject:
-        raise HTTPException(
-            status_code=409, detail=f"{grade_subject.subject.name} has already assigned to {grade_subject.grade.name}",
-        )
-    grade_subject = crud.grade_subject.create(db, obj_in=grade_subject_in)
-
-    return {
-        'grade': grade,  # grade_subject.grade
-        'subject': subject  # grade_subject.subject
-    }
-
-
-@router.get('/{grade_id}/subjects', response_model=schemas.GradeSubjectsOut)
-def get_assigned_or_not_assigned_grade_subjects(
-    *,
-    db: Session = Depends(get_db),
-    grade_id: int,
-    assigned: bool = True
-):
-    grade = crud.grade.get(db, grade_id)
-    if not grade:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Grade with id {grade_id} does not exist",
-        )
-    subjects = crud.grade.get_grade_assigned_or_not_assigned_subjects(
-        db, grade_id=grade_id, assigned=assigned
-    )
-    return {
-        'grade': grade,
-        'subjects': subjects
-    }
-
-
-@router.put('/{grade_id}/subjects/{subject_id}', status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def update_grade_subject(
-    *,
-    db: Session = Depends(get_db),
-    grade_id: int,
-    subject_id: int,
-    grade_subject_in: schemas.GradeSubjectUpdate
-):
-    pass
-
-
-@router.delete('/{grade_id}/subjects/{subject_id}', status_code=status.HTTP_204_NO_CONTENT)
-def unassign_subject_from_grade(
-    *,
-    db: Session = Depends(get_db),
-    grade_id: int,
-    subject_id: int,
-):
-    grade = crud.grade.get(db, grade_id)
-    subject = crud.subject.get(db, subject_id)
-    grade_subject = crud.grade_subject.get(db, grade_id, subject_id)
-
-    if not grade:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Grade with id {grade_id} does not exist",
-        )
-    if not subject:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f'Subject with id {subject_id} does not exist'
-        )
-    if not grade_subject:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f'{subject.name} is not assigned to {grade.name}.'
-        )
-
-    crud.grade_subject.remove(db, grade_id=grade_id, subject_id=subject_id)
-
+    grade = crud.grade.remove(db, payload=grade_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

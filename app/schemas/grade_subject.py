@@ -1,8 +1,11 @@
 from typing import List
 from pydantic import BaseModel
-from .subject import SubjectInDB
-from .grade import GradeInDB
-
+from .subject import BasicSubjectInfo
+from .grade import (
+    BasicGradeInfo,
+    GradeInDB,
+)
+from .pagination import Pagination
 
 class Base(BaseModel):
     grade_id: int
@@ -10,18 +13,18 @@ class Base(BaseModel):
 
 
 class GradeSubjectOutBase(BaseModel):
-    grade: GradeInDB
+    grade: BasicGradeInfo
 
     class Config:
         orm_mode = True
 
 
 class GradeSubjectsOut(GradeSubjectOutBase):
-    subjects: List[SubjectInDB]
+    subjects: List[BasicSubjectInfo]
 
 
 class GradeSubjectOut(GradeSubjectOutBase):
-    subject: SubjectInDB
+    subject: BasicSubjectInfo
 
 
 class GradeSubjectCreate(Base):
@@ -30,3 +33,13 @@ class GradeSubjectCreate(Base):
 
 class GradeSubjectUpdate(Base):
     pass
+
+class SubjectsGradeSchema(GradeInDB):
+    subjects: List[BasicSubjectInfo]
+
+class SubjectGradePaginatedResponseModel(BaseModel):
+    data: List[SubjectsGradeSchema]
+    pagination: Pagination
+
+    class Config:
+        orm_mode = True

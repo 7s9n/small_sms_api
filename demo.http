@@ -1,0 +1,18 @@
+@BASEURL = http://localhost:8000/api/v1
+@username = "s7s"
+@password = "123"
+
+GET {{BASEURL}}/users HTTP/1.1
+content-type: application/json
+
+###
+
+GET {{BASEURL}}/grades HTTP/1.1
+content-type: application/json
+
+###
+
+POST {{BASEURL}}/login/access-token/ HTTP/1.1
+content-type: application/x-www-form-urlencoded
+accept: application/json
+data: username={{username}}&password={{password}}

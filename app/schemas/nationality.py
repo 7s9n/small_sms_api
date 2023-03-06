@@ -1,8 +1,12 @@
-from typing import Optional
+from typing import (
+    Optional,
+    List,
+)
 from pydantic import (
     BaseModel,
     validator,
 )
+from .pagination import Pagination 
 
 
 class Base(BaseModel):
@@ -38,3 +42,7 @@ class NationalityInDB(Base):
 
     class Config:
         orm_mode = True
+
+class NationalitiesResponseModel(BaseModel):
+    data: List[NationalityInDB]
+    pagination: Pagination

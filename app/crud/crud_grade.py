@@ -4,7 +4,8 @@ from app.crud.base import CRUDBase
 from app.db.base import (
     Grade,
     Subject,
-    GradeSubject,
+    subject_grades
+    # GradeSubject,
 )
 from app.schemas import (
     GradeCreate,
@@ -16,9 +17,12 @@ class CRUDGrade(CRUDBase[Grade, GradeCreate, GradeUpdate]):
     def get_by_name(self, db: Session, *, name: str) -> Optional[Grade]:
         return db.query(self.model).filter(Grade.name == name).first()
 
+    def get_by_name_and_level(self, db: Session, *, name: str, level_id: int) -> Optional[Grade]:
+        return db.query(self.model).filter(Grade.name == name, Grade.level_id == level_id).first()
+
     def get_grade_assigned_or_not_assigned_subjects(self, db: Session, *, grade_id: int, assigned: bool = True) -> Optional[List[Subject]]:
-        subquery = db.query(GradeSubject.subject_id).filter(
-            GradeSubject.grade_id == grade_id
+        subquery = db.query(subject_grades.c.subject_id).filter(
+            subject_grades.c.grade_id == grade_id
         ).subquery()
         if assigned:
             subjects = db.query(Subject).filter(Subject.id.in_(subquery)).all()

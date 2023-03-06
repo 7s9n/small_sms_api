@@ -1,9 +1,11 @@
+from typing import List
 from datetime import date
 from datetime import datetime
 from pydantic import (
     BaseModel,
-    validator
+    validator,
 )
+from .pagination import Pagination
 
 
 class Base(BaseModel):
@@ -12,10 +14,10 @@ class Base(BaseModel):
     end_date: date
 
     @validator("title")
-    def validate_title(cls, value):
+    def validate_title(cls, value: str):
         if not value:
             raise ValueError('Title must not be empty.')
-        return value
+        return value.strip()
 
     @validator("start_date", pre=True)
     def parse_start_date(cls, value):
@@ -56,3 +58,8 @@ class SchoolYearInDB(Base):
 
     class Config:
         orm_mode = True
+
+
+class SchoolYearResponseModel(BaseModel):
+    data: List[SchoolYearInDB]
+    pagination: Pagination

@@ -1,6 +1,7 @@
 from typing import (
     List,
     Optional,
+    Union,
 )
 from fastapi import (
     APIRouter,
@@ -9,70 +10,98 @@ from fastapi import (
     Response,
     status,
 )
-
-from sqlalchemy.orm import Session
+from sqlalchemy import exists, text
+from sqlalchemy.orm import Session, joinedload
 from app.api.deps import CommonQueryParams, get_db
+from app.api import deps
 from app import (
     crud,
     schemas,
+    models,
+)
+from app.resources.strings import (
+    THERE_IS_DEPENDENT_DATA_ERROR,
 )
 router = APIRouter(prefix='/registrations', tags=['Registrations'])
 
-
-@router.get('', response_model=List[schemas.RegistrationOut])
+@router.get('', response_model=Union[schemas.RegistrationsResponseModel, List[schemas.RegistrationOut]])
 def get_registrations(
     *,
     db: Session = Depends(get_db),
-    commons: CommonQueryParams = Depends(),
+    queryParam: CommonQueryParams = Depends(),
     school_year_id: Optional[int] = None,
     grade_id: Optional[int] = None,
-    regi_no: Optional[str] = None,
+    user: models.User = Depends(deps.get_current_active_teacher_or_admin),
 ):
-    params = dict(grade_id=grade_id,
-                  school_year_id=school_year_id, regi_no=regi_no)
+    if not school_year_id:
+        school_year = crud.school_year.get_current_school_year(db)
+        if not school_year:
+            return []
+        school_year_id = school_year.id
 
-    return crud.registeration.get_multi(
-        db, skip=commons.skip,
-        limit=commons.limit, params=params
+    if queryParam.page is None or queryParam.limit is None:
+        return crud.registeration.get_multi(db=db, params={"school_year_id": school_year_id, "grade_id": grade_id})
+    
+    num_of_rows, registrations = crud.registeration.get_multi_paginated(
+        db, page=queryParam.page, limit=queryParam.limit,
+        params={"school_year_id": school_year_id, "grade_id": grade_id},
+        sort_by="created_at",
     )
+    if not registrations:
+        return []
+    
+    return {
+        "data":registrations,
+        "pagination": {
+            "current_page": queryParam.page,
+            "per_page": queryParam.limit,
+            "total_records": num_of_rows,
+        }
+    }
 
 
-@router.get('/{registration_id}', response_model=schemas.RegistrationOut)
-def get_registration(
+@router.get('/students/unregistered', response_model=List[schemas.StudentInDB], response_model_include=['id', "full_name"])
+def get_unregistered_students(
     *,
     db: Session = Depends(get_db),
-    registration_id: int
+    user: models.User = Depends(deps.get_current_active_teacher_or_admin),
 ):
-    registration = crud.registeration.get(db, registration_id)
+    school_year = crud.school_year.get_current_school_year(db)
+    if not school_year:
+        return []
 
-    if not registration:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Registration with id {registration_id} does not exist."
+    query = db.query(models.User).filter(
+        models.User.role == 's'
+    ).filter(
+        ~exists().where(
+            models.User.id == models.Registration.student_id,
+            models.Registration.school_year_id == school_year.id,
         )
-    return registration
+    ).order_by(models.User.full_name)
 
-
+    return query.all()
+    
 @router.post('', response_model=schemas.RegistrationOut, status_code=status.HTTP_201_CREATED)
 def create_registration(
     *,
     db: Session = Depends(get_db),
-    registration_in: schemas.RegistrationIn
+    registration_in: schemas.RegistrationIn,
+    admin: models.User = Depends(deps.get_current_active_superuser),
 ):
     school_year = crud.school_year.get_current_school_year(db)
 
     if not school_year:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"School year not set yet! Please go to settings and set it."
+            detail=f"السنة الدراسية لم تحدد بعد! يرجى الذهاب إلى الإعدادات وتعيينها."
         )
 
-    student = crud.student.get(db, registration_in.student_id)
+    student = crud.user.get(db, registration_in.student_id)
 
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f'Student with id {registration_in.student_id} does not exist.'
+            detail=f'الطالب الذي ارسلته غير موجود في النظام'
         )
 
     grade = crud.grade.get(db, registration_in.grade_id)
@@ -80,7 +109,7 @@ def create_registration(
     if not grade:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f'Grade with id {registration_in.grade_id} does not exist.'
+            detail=f'الصف الذي ارسلته غير موجود في النظام'
         )
 
     reg = crud.registeration.get_registration_by_grade_student_school_year(
@@ -91,17 +120,47 @@ def create_registration(
     if reg:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Cannot register student in two classes on the same year."
+            detail=f"لا يمكن تسجيل الطالب في فصلين في نفس العام."
         )
 
-    # Generate a unique registration number
-    regi_no = crud.registeration.generate_unique_regi_no(
-        db, school_year, grade)
-
     registration_data = schemas.RegistrationCreate(
-        regi_no=regi_no, student_id=student.id,
+        student_id=student.id,
         grade_id=grade.id, school_year_id=school_year.id
     )
 
-    registration = crud.registeration.create(db, obj_in=registration_data)
+    registration = crud.registeration.create(
+        db, obj_in=registration_data, has_id=False)
     return registration
+
+@router.delete('/{student_id}/{school_year_id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_registration(
+    *,
+    db: Session = Depends(get_db),
+    student: models.User = Depends(deps.get_student_by_id),
+    school_year: models.SchoolYear = Depends(deps.get_school_year_by_id),
+    registration: models.Registration = Depends(deps.get_registration_by_pk),
+    admin: models.User = Depends(deps.get_current_active_superuser),
+):
+    current_school_year = crud.school_year.get_current_school_year(db)
+    if school_year.id != current_school_year.id:
+        raise HTTPException(
+            status_code=400,
+            detail="هذه البيانات للقراء فقط, لايمكنك حذفها"
+        )
+    ## check if student has no marks then delete it
+    if crud.mark.get_by_custom_filters(
+        db,
+        filters={
+            "grade_id": registration.grade_id,
+            "student_id": registration.student_id,
+            "school_year_id": school_year.id
+        }
+    ):
+        raise HTTPException(status_code=400, detail=THERE_IS_DEPENDENT_DATA_ERROR)
+
+    crud.registeration.remove(
+        db, 
+        payload=dict(student_id=student.id, school_year_id=school_year.id)
+    )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

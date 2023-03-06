@@ -1,25 +1,18 @@
+from datetime import datetime
+from typing import List
 from pydantic import (
     BaseModel,
-    validator
+    Field,
 )
 from .student import StudentInDB
 from .grade import GradeInDB
 from .school_year import SchoolYearInDB
-
+from .pagination import Pagination
 
 class Base(BaseModel):
-    regi_no: str
     student_id: int
     grade_id: int
     school_year_id: int
-
-    @validator("regi_no")
-    def validate_regi_no(cls, value: str):
-        value = value.strip()
-        if not value:
-            raise ValueError('Registration number must not be empty.')
-        return value
-
 
 class RegistrationCreate(Base):
     pass
@@ -35,11 +28,18 @@ class RegistrationIn(BaseModel):
 
 
 class RegistrationOut(BaseModel):
-    id: int
-    regi_no: str
-    student: StudentInDB
-    grade: GradeInDB
-    school_year: SchoolYearInDB
+    student: StudentInDB = Field(..., include={"id", "full_name"})
+    grade: GradeInDB = Field(..., include={"id", "composite_name"})
+    school_year: SchoolYearInDB = Field(..., include={"id", "title"})
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+        fields = {'created_at': {'include': True}}
+
+class RegistrationsResponseModel(BaseModel):
+    data: List[RegistrationOut] 
+    pagination: Pagination
 
     class Config:
         orm_mode = True

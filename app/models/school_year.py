@@ -10,7 +10,7 @@ from app.db.base_class import Base
 
 
 class SchoolYear(Base):
-    id = Column(BigInteger, primary_key=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=False)
     title = Column(String, index=True, unique=True, nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
