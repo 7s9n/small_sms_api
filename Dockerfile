@@ -1,3 +1,5 @@
+FROM python:3.10
+
 ARG PORT=8000
 
 RUN apt-get install python3 -y
