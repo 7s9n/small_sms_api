@@ -140,7 +140,7 @@ def delete_nationality(
     if not nationality:
         raise HTTPException(status_code=404, detail=NATIONALITY_DOES_NOT_EXIST)
 
-    if nationality.students:
+    if nationality.users:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=THERE_IS_DEPENDENT_DATA_ERROR
