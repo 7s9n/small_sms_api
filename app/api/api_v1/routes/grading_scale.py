@@ -152,5 +152,5 @@ def delete_grading_scale(
         )
     # check if grading scale connected whith scores
 
-    grading_scale = crud.grading_scale.remove(db, id=grading_scale_id)
+    grading_scale = crud.grading_scale.remove(db, payload=grading_scale_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

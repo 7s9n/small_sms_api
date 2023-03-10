@@ -2,14 +2,18 @@ from typing import List, Optional
 from pydantic import (
     BaseModel,
     root_validator,
+    validator,
 )
 from .pagination import Pagination 
+from .utils import check_not_empty_str
 
 class GradingScaleBase(BaseModel):
     name: str
     lowest_percentage: float
     highest_percentage: float
     notes: Optional[str] = None
+
+    _name_not_empty = validator("name", allow_reuse=True)(check_not_empty_str("اسم التقدير يجب ألا يكون فارغًا."))
 
     @root_validator
     def check_percentages(cls, values):
