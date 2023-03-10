@@ -12,10 +12,12 @@ class GradingScaleBase(BaseModel):
     notes: Optional[str] = None
 
     @root_validator
-    def check_passwords_match(cls, values):
+    def check_percentages(cls, values):
         lowest, highest = values.get('lowest_percentage'), values.get('highest_percentage')
         if lowest is not None and highest is not None and lowest > highest:
             raise ValueError('النسبة الصغرى اكبر من النسبة الكبرى.')
+        if lowest == highest:
+            raise ValueError('يجب إدخال نسب مختلفه.')
         return values
 
 class GradingScaleCreate(GradingScaleBase):
