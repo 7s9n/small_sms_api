@@ -10,12 +10,14 @@ from pydantic import (
 from .levels import LevelInDB
 from .pagination import Pagination 
 from .subject import SubjectInDB
+from .utils import check_not_empty_str
 
 class GradeBase(BaseModel):
     name: str
     numeric_value: int
     level_id: int
     notes: Optional[str] = None
+    _name_not_empty = validator("name", allow_reuse=True)(check_not_empty_str("اسم الصف يجب ألا يكون فارغًا."))
 
 class GradeCreate(GradeBase):
     pass
